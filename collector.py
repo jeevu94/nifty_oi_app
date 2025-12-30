@@ -141,7 +141,7 @@ def extract_rows(api_data):
             pe_oi - ce_oi,  # NET OI
         ))
 
-    return atm, rows
+    return atm, underlying, rows
 
 
 # ---------------- SQLite setup ----------------
@@ -160,6 +160,19 @@ CREATE TABLE IF NOT EXISTS oi_data (
     net_oi INTEGER
 )
 """)
+conn.commit()
+
+# Ensure new columns exist for spot (underlying) and atm (detected ATM strike)
+try:
+    cur.execute("ALTER TABLE oi_data ADD COLUMN spot REAL")
+except Exception:
+    pass
+
+try:
+    cur.execute("ALTER TABLE oi_data ADD COLUMN atm INTEGER")
+except Exception:
+    pass
+
 conn.commit()
 
 
@@ -181,11 +194,18 @@ def main():
                 time.sleep(INTERVAL_SECONDS)
                 continue
 
-            atm, rows = extract_rows(api_data)
+            atm, underlying, rows = extract_rows(api_data)
+
+            # append spot and atm to each row for better downstream analysis
+            rows_with_meta = []
+            for r in rows:
+                # r is (time, expiry, strike, ce_oi, ce_oi_change, pe_oi, pe_oi_change, net_oi)
+                # append underlying (spot) and atm
+                rows_with_meta.append(r + (underlying, atm))
 
             cur.executemany(
-                "INSERT INTO oi_data VALUES (?,?,?,?,?,?,?,?)",
-                rows
+                "INSERT INTO oi_data VALUES (?,?,?,?,?,?,?,?,?,?)",
+                rows_with_meta
             )
             conn.commit()
 
