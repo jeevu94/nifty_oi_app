@@ -1,0 +1,48 @@
+name: Build Windows executables
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r nifty_oi_app/requirements.txt
+          pip install pyinstaller
+
+      - name: Build collector.exe
+        working-directory: nifty_oi_app
+        run: |
+          pyinstaller --noconfirm --onefile collector.py
+
+      - name: Build run_dashboard.exe
+        working-directory: nifty_oi_app
+        run: |
+          pyinstaller --noconfirm --onefile run_dashboard.py
+
+      - name: Build start_app_win.exe
+        working-directory: nifty_oi_app
+        run: |
+          pyinstaller --noconfirm --onefile start_app_win.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nifty-oi-windows-build
+          path: |
+            nifty_oi_app/dist/collector.exe
+            nifty_oi_app/dist/run_dashboard.exe
+            nifty_oi_app/dist/start_app_win.exe

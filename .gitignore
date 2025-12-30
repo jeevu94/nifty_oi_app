@@ -1,0 +1,4 @@
+oi_live.db
+__pycache__/
+*.pyc
+logs/
